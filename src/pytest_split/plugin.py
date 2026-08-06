@@ -72,6 +72,23 @@ def pytest_addoption(parser: "Parser") -> None:
             "while running the suite with '--store-durations'."
         ),
     )
+    group.addoption(
+        "--sort-groups-by-duration",
+        dest="sort_groups_by_duration",
+        action="store_true",
+        default=True,
+        help=(
+            "Sort tests within each group by duration descending (longest first). "
+            "This improves wall-clock time when running with multiple workers (e.g. pytest-xdist). "
+            "Enabled by default."
+        ),
+    )
+    group.addoption(
+        "--no-sort-groups-by-duration",
+        dest="sort_groups_by_duration",
+        action="store_false",
+        help="Disable sorting tests by duration within each group (preserve collection order).",
+    )
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -166,6 +183,15 @@ class PytestSplitPlugin(Base):
         ensure_ipynb_compatibility(group, items)
 
         items[:] = group.selected
+
+        if config.option.sort_groups_by_duration and self.cached_durations:
+            durations = self.cached_durations
+            avg_duration = sum(durations.values()) / len(durations)
+            items.sort(
+                key=lambda item: durations.get(item.nodeid, avg_duration),
+                reverse=True,
+            )
+
         config.hook.pytest_deselected(items=group.deselected)
 
         self.writer.line(

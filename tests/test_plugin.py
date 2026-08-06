@@ -5,6 +5,7 @@ from typing import ClassVar
 
 import pytest
 from _pytest.main import ExitCode  # type: ignore[attr-defined]
+
 from pytest_split.algorithms import Algorithms
 
 pytest_plugins = ["pytester"]
@@ -12,7 +13,7 @@ pytest_plugins = ["pytester"]
 EXAMPLE_SUITE_TEST_COUNT = 10
 
 
-@pytest.fixture()
+@pytest.fixture
 def example_suite(testdir):
     testdir.makepyfile(
         "".join(
@@ -23,7 +24,7 @@ def example_suite(testdir):
     return testdir
 
 
-@pytest.fixture()
+@pytest.fixture
 def durations_path(tmpdir):
     return str(tmpdir.join(".durations"))
 
@@ -213,6 +214,7 @@ class TestSplitToSuites:
             durations_path,
             "--splitting-algorithm",
             algo,
+            "--no-sort-groups-by-duration",
         )
         result.assertoutcome(passed=len(expected))
         assert _passed_test_names(result) == expected
@@ -237,19 +239,37 @@ class TestSplitToSuites:
             json.dump(durations, f)
 
         result = example_suite.inline_run(
-            "--splits", "3", "--group", "1", "--durations-path", durations_path
+            "--splits",
+            "3",
+            "--group",
+            "1",
+            "--durations-path",
+            durations_path,
+            "--no-sort-groups-by-duration",
         )
         result.assertoutcome(passed=4)
         assert _passed_test_names(result) == ["test_1", "test_2", "test_3", "test_4"]
 
         result = example_suite.inline_run(
-            "--splits", "3", "--group", "2", "--durations-path", durations_path
+            "--splits",
+            "3",
+            "--group",
+            "2",
+            "--durations-path",
+            durations_path,
+            "--no-sort-groups-by-duration",
         )
         result.assertoutcome(passed=3)
         assert _passed_test_names(result) == ["test_5", "test_6", "test_7"]
 
         result = example_suite.inline_run(
-            "--splits", "3", "--group", "3", "--durations-path", durations_path
+            "--splits",
+            "3",
+            "--group",
+            "3",
+            "--durations-path",
+            durations_path,
+            "--no-sort-groups-by-duration",
         )
         result.assertoutcome(passed=3)
         assert _passed_test_names(result) == ["test_8", "test_9", "test_10"]
@@ -302,6 +322,7 @@ class TestSplitToSuites:
                 "--durations-path",
                 durations_path,
                 "-m mark_one",
+                "--no-sort-groups-by-duration",
             )
             for group in range(1, 3)
         ]
@@ -430,6 +451,89 @@ class TestHasExpectedOutput:
             "[pytest-split] Splitting tests with algorithm: duration_based_chunks"
             in outerr.out
         )
+
+
+class TestSortGroupsByDuration:
+    """Tests for --sort-groups-by-duration / --no-sort-groups-by-duration."""
+
+    def _make_durations(self, test_name, durations_path):
+        """Write durations with correct nodeid prefix for testdir inline_run."""
+        file_prefix = f"{test_name}0/{test_name}.py"
+        durations = {
+            f"{file_prefix}::test_{num}": num
+            for num in range(1, EXAMPLE_SUITE_TEST_COUNT + 1)
+        }
+        with open(durations_path, "w") as f:
+            json.dump(durations, f)
+        return durations, file_prefix
+
+    def test_sorts_by_duration_descending_by_default(
+        self, example_suite, durations_path
+    ):
+        self._make_durations(
+            "test_sorts_by_duration_descending_by_default", durations_path
+        )
+
+        result = example_suite.inline_run(
+            "--splits",
+            "1",
+            "--group",
+            "1",
+            "--durations-path",
+            durations_path,
+            "--splitting-algorithm",
+            "least_duration",
+        )
+        result.assertoutcome(passed=EXAMPLE_SUITE_TEST_COUNT)
+        passed_names = _passed_test_names(result)
+        assert passed_names == [
+            f"test_{num}" for num in range(EXAMPLE_SUITE_TEST_COUNT, 0, -1)
+        ]
+
+    def test_preserves_collection_order_when_disabled(
+        self, example_suite, durations_path
+    ):
+        self._make_durations(
+            "test_preserves_collection_order_when_disabled", durations_path
+        )
+
+        result = example_suite.inline_run(
+            "--splits",
+            "1",
+            "--group",
+            "1",
+            "--durations-path",
+            durations_path,
+            "--splitting-algorithm",
+            "least_duration",
+            "--no-sort-groups-by-duration",
+        )
+        result.assertoutcome(passed=EXAMPLE_SUITE_TEST_COUNT)
+        passed_names = _passed_test_names(result)
+        assert passed_names == [
+            f"test_{num}" for num in range(1, EXAMPLE_SUITE_TEST_COUNT + 1)
+        ]
+
+    def test_sort_works_with_multiple_groups(self, example_suite, durations_path):
+        durations, file_prefix = self._make_durations(
+            "test_sort_works_with_multiple_groups", durations_path
+        )
+
+        result = example_suite.inline_run(
+            "--splits",
+            "2",
+            "--group",
+            "1",
+            "--durations-path",
+            durations_path,
+            "--splitting-algorithm",
+            "least_duration",
+        )
+        passed_names = _passed_test_names(result)
+        passed_durations = [
+            durations[f"{file_prefix}::{name}"] for name in passed_names
+        ]
+        assert passed_durations == sorted(passed_durations, reverse=True)
 
 
 def _passed_test_names(result):
