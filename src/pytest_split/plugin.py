@@ -191,6 +191,21 @@ class PytestSplitPlugin(Base):
                 key=lambda item: durations.get(item.nodeid, avg_duration),
                 reverse=True,
             )
+            # Interleave longest and shortest so that xdist's chunk-of-2
+            # initial dispatch pairs a long test with a short one on each
+            # worker, rather than stacking the two longest together.
+            n = len(items)
+            if n > 2:
+                sorted_items = list(items)
+                interleaved = []
+                lo, hi = 0, n - 1
+                while lo <= hi:
+                    interleaved.append(sorted_items[lo])
+                    if lo != hi:
+                        interleaved.append(sorted_items[hi])
+                    lo += 1
+                    hi -= 1
+                items[:] = interleaved
 
         config.hook.pytest_deselected(items=group.deselected)
 
