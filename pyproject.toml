@@ -18,6 +18,7 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -31,7 +32,7 @@ packages = [{ include = 'pytest_split', from = 'src' }]
 
 
 [tool.poetry.dependencies]
-python = ">=3.11, <4.0"
+python = ">=3.10, <4.0"
 pytest = ">=5,<10"
 
 
@@ -40,7 +41,7 @@ importlib-metadata = "==4.11.*"
 mkdocstrings = {version = ">=0.18", extras = ["python"]}
 mkdocs-material = "*"
 mypy = "*"
-pre-commit = "*"
+pre-commit = { version = "*", python = ">=3.11" }  # filelock >=4.1.1 (via virtualenv) needs Python 3.11+
 pymdown-extensions = "*"
 pytest = "*"
 pytest-github-actions-annotate-failures = "*"
@@ -59,7 +60,7 @@ slowest-tests = "pytest_split.cli:list_slowest_tests"
 pytest-split = "pytest_split.plugin"
 
 [tool.black]
-target-version = ["py311", "py312", "py313", "py314"]
+target-version = ["py310", "py311", "py312", "py313", "py314"]
 include = '\.pyi?$'
 
 [tool.pytest.ini_options]
@@ -91,7 +92,7 @@ disallow_untyped_calls = false
 
 
 [tool.ruff]
-target-version = "py311" # The lowest supported version
+target-version = "py310" # The lowest supported version
 
 [tool.ruff.lint]
 # By default, enable all the lint rules.
