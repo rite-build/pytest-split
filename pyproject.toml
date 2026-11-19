@@ -41,7 +41,7 @@ importlib-metadata = "==4.11.*"
 mkdocstrings = {version = ">=0.18", extras = ["python"]}
 mkdocs-material = "*"
 mypy = "*"
-pre-commit = "*"
+pre-commit = { version = "*", python = ">=3.11" }  # filelock >=4.1.1 (via virtualenv) needs Python 3.11+
 pymdown-extensions = "*"
 pytest = "*"
 pytest-github-actions-annotate-failures = "*"
