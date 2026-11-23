@@ -5,7 +5,6 @@ from typing import ClassVar
 
 import pytest
 from _pytest.main import ExitCode  # type: ignore[attr-defined]
-
 from pytest_split.algorithms import Algorithms
 
 pytest_plugins = ["pytester"]
@@ -13,7 +12,7 @@ pytest_plugins = ["pytester"]
 EXAMPLE_SUITE_TEST_COUNT = 10
 
 
-@pytest.fixture
+@pytest.fixture()
 def example_suite(testdir):
     testdir.makepyfile(
         "".join(
@@ -24,7 +23,7 @@ def example_suite(testdir):
     return testdir
 
 
-@pytest.fixture
+@pytest.fixture()
 def durations_path(tmpdir):
     return str(tmpdir.join(".durations"))
 
@@ -453,6 +452,19 @@ class TestHasExpectedOutput:
         )
 
 
+def _zigzag(values):
+    """Expected --sort-groups-by-duration order: longest, shortest, 2nd longest, ..."""
+    result = []
+    lo, hi = 0, len(values) - 1
+    while lo <= hi:
+        result.append(values[lo])
+        if lo != hi:
+            result.append(values[hi])
+        lo += 1
+        hi -= 1
+    return result
+
+
 class TestSortGroupsByDuration:
     """Tests for --sort-groups-by-duration / --no-sort-groups-by-duration."""
 
@@ -467,11 +479,11 @@ class TestSortGroupsByDuration:
             json.dump(durations, f)
         return durations, file_prefix
 
-    def test_sorts_by_duration_descending_by_default(
+    def test_sorts_by_duration_interleaved_by_default(
         self, example_suite, durations_path
     ):
         self._make_durations(
-            "test_sorts_by_duration_descending_by_default", durations_path
+            "test_sorts_by_duration_interleaved_by_default", durations_path
         )
 
         result = example_suite.inline_run(
@@ -486,8 +498,9 @@ class TestSortGroupsByDuration:
         )
         result.assertoutcome(passed=EXAMPLE_SUITE_TEST_COUNT)
         passed_names = _passed_test_names(result)
+        # Zigzag: longest, shortest, 2nd longest, 2nd shortest, ...
         assert passed_names == [
-            f"test_{num}" for num in range(EXAMPLE_SUITE_TEST_COUNT, 0, -1)
+            f"test_{num}" for num in (10, 1, 9, 2, 8, 3, 7, 4, 6, 5)
         ]
 
     def test_preserves_collection_order_when_disabled(
@@ -533,7 +546,7 @@ class TestSortGroupsByDuration:
         passed_durations = [
             durations[f"{file_prefix}::{name}"] for name in passed_names
         ]
-        assert passed_durations == sorted(passed_durations, reverse=True)
+        assert passed_durations == _zigzag(sorted(passed_durations, reverse=True))
 
 
 def _passed_test_names(result):

@@ -9,6 +9,9 @@ from _pytest.reports import TestReport
 from pytest_split import algorithms
 from pytest_split.ipynb_compatibility import ensure_ipynb_compatibility
 
+# Interleaving 1 or 2 items is a no-op, so only reorder larger groups.
+_MIN_ITEMS_TO_INTERLEAVE = 2
+
 if TYPE_CHECKING:
     from _pytest import nodes
     from _pytest.config import Config
@@ -195,7 +198,7 @@ class PytestSplitPlugin(Base):
             # initial dispatch pairs a long test with a short one on each
             # worker, rather than stacking the two longest together.
             n = len(items)
-            if n > 2:
+            if n > _MIN_ITEMS_TO_INTERLEAVE:
                 sorted_items = list(items)
                 interleaved = []
                 lo, hi = 0, n - 1
